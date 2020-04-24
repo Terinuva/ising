@@ -10,7 +10,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
-#include <windows.h>        //For cursor control
+#include "cursor.h"         //For cursor control
 #define SIZE 200
 #define PLOTSIZE 48         //Use less than 49 otherwise screen overflows
 #define torus(a) (a < 0 ? a + SIZE : (a >= SIZE ? a - SIZE : a))        //Defines how a torus behaves
@@ -22,50 +22,32 @@ using namespace std;
 int grid[SIZE][SIZE];
 
 
-/*Turns the cursor on/off*/
-void ShowConsoleCursor(bool showFlag)
-{
-    HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+/*Defines random() function for Windows*/
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__TOS_WIN__)
+    int random(){
+        return rand();
+    }
 
-    CONSOLE_CURSOR_INFO     cursorInfo;
+    void srandom(unsigned seed){
+        srand(seed);
+    }
+#endif
 
-    GetConsoleCursorInfo(out, &cursorInfo);
-    cursorInfo.bVisible = showFlag; // set the cursor visibility
-    SetConsoleCursorInfo(out, &cursorInfo);
-}
-
-/*Sets cursor to the top left position to overwrite terminal output*/
-void InitCurs(){
-
-
-	/*Initialise objects for cursor manipulation*/
-    HANDLE hStdout;
-    COORD destCoord;
-    hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-
-    /*Sets coordinates of cursor to (0,0) */
-    destCoord.X = 0;
-    destCoord.Y = 0;
-    SetConsoleCursorPosition(hStdout, destCoord);
-
-    ShowConsoleCursor(false);
-
-}
 
 
 void init(){
-	int x,y;
-	double p = 0.3;
+	int x,y;                                        //Grid coordinates
+	double p = 0.3;                                 //Initial probability of a spin being -1
 	FILE *mag;
 
 	mag = fopen("magnetization.txt","w");           //Overwrites pre-existing file or creates one
 	fclose(mag);
 
-    srand(time(NULL));                                  //Seeds rand() with pseudo-random initial integer
+    srandom(time(NULL));                                  //Seeds rand() with pseudo-random initial integer
 
 	for (x=0; x<SIZE; x++){                             //Creates random matrix of size SIZE x SIZE with entries -1 and 1, where P(-1) = p and P(1) = 1-p
 		for (y=0; y<SIZE; y++){
-            if(rand()/(float)RAND_MAX < p ){
+            if(random()/(float)RAND_MAX < p ){
                 grid[x][y] = -1;
             }else{
                 grid[x][y] = 1;
@@ -87,12 +69,12 @@ void output(){
 	for (x=0; x<PLOTSIZE; x++){
 		for (y=0; y<PLOTSIZE*2; y++){
 			if (grid[x][y] == 1){
-				putchar('*');
+				cout << "*";
 			}else{
-				putchar('.');
+				cout << ".";
 			}
 		}
-		putchar('\n');
+		cout << "\n";
 	}
 
 	/*Sums spins of lattice*/
@@ -112,8 +94,8 @@ void output(){
 void update(float J, float H){
 
     /*Choose random lattice site*/
-	int x = rand()/(float)RAND_MAX * SIZE;
-	int y = rand()/(float)RAND_MAX * SIZE;
+	int x = random()/(float)RAND_MAX * SIZE;
+	int y = random()/(float)RAND_MAX * SIZE;
 
     /*Calculate Hamiltonian at that lattice site*/
 	int sum = grid[x][torus(y+1)] + grid[x][torus(y - 1)] + grid[torus(x + 1)][y] + grid[torus(x - 1)][y];
@@ -121,20 +103,24 @@ void update(float J, float H){
 	double E = 2.0 * grid[x][y] * (J * sum + H);
 
 	/*Change spin at that site if conditions satisfied*/
-	if ((E < 0.0) || (exp(-E) > (rand()/(double)RAND_MAX))){
+	if ((E < 0.0) || (exp(-E) > (random()/(double)RAND_MAX))){
 		grid[x][y] *= -1;
 	}
 }
 
 int main(){
 
-	float T = 1.0;      //Temperature
     float J = 0.44;     //Coupling constant
+	float T = 1.0;      //Temperature
 	float H = 0.001;    //Magnetic field
 
 	long t;
 
-    ShowWindow(GetConsoleWindow(), SW_MAXIMIZE);        //Sets terminal windows to windowed full-screen for aesthetic reasons
+
+	/*Turn off if you are doing multiple Simulation!*/
+    Fullscreen(true);        //Sets terminal windows to windowed full-screen for aesthetic reasons.
+
+
 
     init();                         //Creates the initial random configuration of spins
 
@@ -145,7 +131,7 @@ int main(){
 
 	for (t=0L; t <= 1000; t++){
         InitCurs();                 //Puts cursor in initial position to overwrite output window
-        for(int j = 1; j <= 100; j++){  //Update lattice 100 times so that the visualisation looks better
+        for(int j = 1; j <= 1000; j++){  //Update lattice 100 times so that the visualisation looks better
             update(J / T, H / T);
         }
 		output();                   //Outputs sublattice in terminal and average magnetisation
