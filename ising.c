@@ -11,15 +11,15 @@
 #include <stdlib.h>
 #include <time.h>
 #define GRIDSIZE 600
-#define PLOTSIZE 80
+#define PLOTSIZE 48       //For larger values, please execute from Windows Terminal and zoom out to avoid Screen Overflow!
 #define torus(a) (a < 0 ? a + GRIDSIZE : (a >= GRIDSIZE ? a - GRIDSIZE : a))
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__TOS_WIN__)
 #include <windows.h>
 
-/* Turns the cursor on/off */
+/*Turns the cursor on/off*/
 
-void show_console_cursor(bool showFlag)
+void show_console_cursor(_Bool showFlag)
 {
 	HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -43,12 +43,14 @@ void home() {
 	destCoord.Y = 0;
 	SetConsoleCursorPosition(hStdout, destCoord);
 
-	show_console_cursor(false);
+	show_console_cursor(0);
 }
 
-void fullscreen(bool bl) {
+void fullscreen(_Bool bl) {
 	if (bl) {
 		ShowWindow(GetConsoleWindow(), SW_MAXIMIZE);
+	}else if(!bl){
+        ShowWindow(GetConsoleWindow(), SW_RESTORE);
 	}
 }
 
@@ -62,13 +64,16 @@ void srandom(unsigned seed){
 }
 
 void system_init() {
-	fullscreen(true);
-	show_console_cursor(false);
+	fullscreen(1);
+	show_console_cursor(0);
 }
 
 #else
 
 void system_init() {
+}
+
+void fullscreen(_Bool bl){
 }
 
 void home() {
@@ -86,9 +91,13 @@ void init(){
 	mag = fopen("magnetization","w");
 	fclose(mag);
 
-	for (x=0; x<GRIDSIZE; x++)
-		for (y=0; y<GRIDSIZE; y++)
+	for (x=0; x<GSIZE; x++)
+		for (y=0; y<GSIZE; y++)
 			grid[x][y] = random()/(float)RAND_MAX < 0.3  ? -1 : 1;
+
+	fullscreen(0);
+	fullscreen(1);
+
 
 	srandom((int) time(NULL) % (1 << 31));
 }
@@ -100,6 +109,7 @@ void output(){
 
     /* Cursor home */
 	home();
+
 	for (x=0; x<PLOTSIZE; x++){
 		for (y=0; y<PLOTSIZE*2; y++){
 			if (grid[x][y] == 1)
@@ -110,10 +120,11 @@ void output(){
 		putchar('\n');
 	}
 
+
 	for (x=0; x<GRIDSIZE; x++)
 		for (y=0; y<GRIDSIZE; y++)
 			m += grid[x][y];
-	
+
 	printf("m=%f\n",m/(float)(GRIDSIZE * GRIDSIZE));
 	mag = fopen("magnetization","a");
 	fprintf(mag, "%f\n",m/(float)(GRIDSIZE * GRIDSIZE));
@@ -121,8 +132,8 @@ void output(){
 }
 
 void update(float J, float H){
-	int x = (int)(random() * GRIDSIZE/RAND_MAX);
-	int y = (int)(random() * GRIDSIZE/RAND_MAX);
+	int x = (int)(random() * GRIDSIZE/(float)RAND_MAX);
+	int y = (int)(random() * GRIDSIZE/(float)RAND_MAX);
 
 	int sum = grid[x][torus(y+1)] + grid[x][torus(y - 1)] + grid[torus(x + 1)][y] + grid[torus(x - 1)][y];
 
@@ -131,14 +142,14 @@ void update(float J, float H){
 	if ((E < 0.0) || (exp(-E) > (random()/(double)RAND_MAX)))
 		grid[x][y] *= -1;
 }
-		
+
 
 int main(){
 
 	float T = 1.0;
-    float J = 0.44;
+    	float J = 0.44;
 	float H = 0.001;
-	
+
 	long t;
 
 	init();
